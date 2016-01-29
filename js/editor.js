@@ -2,358 +2,468 @@
 ZenPen = window.ZenPen || {};
 ZenPen.editor = (function() {
 
-	// Editor elements
-	var headerField, contentField, cleanSlate, lastType, currentNodeList, savedSelection;
+    // Editor elements
+    var headerField, contentField, cleanSlate, lastType, currentNodeList, savedSelection;
 
-	// Editor Bubble elements
-	var textOptions, optionsBox, boldButton, italicButton, quoteButton, urlButton, urlInput;
+    // Editor Bubble elements
+    var textOptions, optionsBox, boldButton, italicButton, quoteButton, urlButton, urlInput;
 
-	var composing;
+    var composing;
 
-	function init() {
+    var flowTimeout, flowLastKeyWasShortcut = flowMode = false,
+        flowRefreshKeys = [
+            // Numbers
+            48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+            // Letters
+            58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90
+        ],
+        flowAllowKeys = [
+            13, // Enter
+            32 // Space
+        ];
 
-		composing = false;
-		bindElements();
+    function init() {
 
-		// Set cursor position
-		var range = document.createRange();
-		var selection = window.getSelection();
-		range.setStart(headerField, 1);
-		selection.removeAllRanges();
-		selection.addRange(range);
+        composing = false;
+        bindElements();
 
-		createEventBindings();
+        // Set cursor position
+        var range = document.createRange();
+        var selection = window.getSelection();
+        range.setStart(headerField, 1);
+        selection.removeAllRanges();
+        selection.addRange(range);
 
-		// Load state if storage is supported
-		if ( ZenPen.util.supportsHtmlStorage() ) {
-			loadState();
-		}
-	}
+        createEventBindings();
 
-	function createEventBindings() {
+        // Load state if storage is supported
+        if (ZenPen.util.supportsHtmlStorage()) {
+            loadState();
+        }
+    }
 
-		// Key up bindings
-		if ( ZenPen.util.supportsHtmlStorage() ) {
+    function createEventBindings() {
 
-			document.onkeyup = function( event ) {
-				checkTextHighlighting( event );
-				saveState();
-			}
+        // Key up bindings
+        if (ZenPen.util.supportsHtmlStorage()) {
 
-		} else {
-			document.onkeyup = checkTextHighlighting;
-		}
+            document.onkeyup = function(event) {
+                checkTextHighlighting(event);
+                saveState();
+            }
 
-		// Mouse bindings
-		document.onmousedown = checkTextHighlighting;
-		document.onmouseup = function( event ) {
+        } else {
+            document.onkeyup = checkTextHighlighting;
+        }
 
-			setTimeout( function() {
-				checkTextHighlighting( event );
-			}, 1);
-		};
-		
-		// Window bindings
-		window.addEventListener( 'resize', function( event ) {
-			updateBubblePosition();
-		});
+        // Mouse bindings
+        document.onmousedown = checkTextHighlighting;
+        document.onmouseup = function(event) {
 
+            setTimeout(function() {
+                checkTextHighlighting(event);
+            }, 1);
+        };
 
-		document.body.addEventListener( 'scroll', function() {
+        // Window bindings
+        window.addEventListener('resize', function(event) {
+            updateBubblePosition();
+        });
 
-			// TODO: Debounce update bubble position to stop excessive redraws
-			updateBubblePosition();
-		});
 
-		// Composition bindings. We need them to distinguish
-		// IME composition from text selection
-		document.addEventListener( 'compositionstart', onCompositionStart );
-		document.addEventListener( 'compositionend', onCompositionEnd );
-	}
+        document.body.addEventListener('scroll', function() {
 
+            // TODO: Debounce update bubble position to stop excessive redraws
+            updateBubblePosition();
+        });
 
-	function bindElements() {
+        // Composition bindings. We need them to distinguish
+        // IME composition from text selection
+        document.addEventListener('compositionstart', onCompositionStart);
+        document.addEventListener('compositionend', onCompositionEnd);
+    }
 
-		headerField = document.querySelector( '.header' );
-		contentField = document.querySelector( '.content' );
-		textOptions = document.querySelector( '.text-options' );
 
-		optionsBox = textOptions.querySelector( '.options' );
+    function bindElements() {
 
-		boldButton = textOptions.querySelector( '.bold' );
-		boldButton.onclick = onBoldClick;
+        headerField = document.querySelector('.header');
+        contentField = document.querySelector('.content');
+        textOptions = document.querySelector('.text-options');
 
-		italicButton = textOptions.querySelector( '.italic' );
-		italicButton.onclick = onItalicClick;
+        optionsBox = textOptions.querySelector('.options');
 
-		quoteButton = textOptions.querySelector( '.quote' );
-		quoteButton.onclick = onQuoteClick;
+        boldButton = textOptions.querySelector('.bold');
+        boldButton.onclick = onBoldClick;
 
-		urlButton = textOptions.querySelector( '.url' );
-		urlButton.onmousedown = onUrlClick;
+        italicButton = textOptions.querySelector('.italic');
+        italicButton.onclick = onItalicClick;
 
-		urlInput = textOptions.querySelector( '.url-input' );
-		urlInput.onblur = onUrlInputBlur;
-		urlInput.onkeydown = onUrlInputKeyDown;
-	}
+        quoteButton = textOptions.querySelector('.quote');
+        quoteButton.onclick = onQuoteClick;
 
-	function checkTextHighlighting( event ) {
+        urlButton = textOptions.querySelector('.url');
+        urlButton.onmousedown = onUrlClick;
 
-		var selection = window.getSelection();
+        urlInput = textOptions.querySelector('.url-input');
+        urlInput.onblur = onUrlInputBlur;
+        urlInput.onkeydown = onUrlInputKeyDown;
+    }
 
+    function checkTextHighlighting(event) {
 
-		if ( (event.target.className === "url-input" ||
-		    event.target.classList.contains( "url" ) ||
-		    event.target.parentNode.classList.contains( "ui-inputs" ) ) ) {
-
-			currentNodeList = findNodes( selection.focusNode );
-			updateBubbleStates();
-			return;
-		}
-
-		// Check selections exist
-		if ( selection.isCollapsed === true && lastType === false ) {
-
-			onSelectorBlur();
-		}
-
-		// Text is selected
-		if ( selection.isCollapsed === false && composing === false ) {
-
-			currentNodeList = findNodes( selection.focusNode );
-
-			// Find if highlighting is in the editable area
-			if ( hasNode( currentNodeList, "ARTICLE") ) {
-				updateBubbleStates();
-				updateBubblePosition();
+        var selection = window.getSelection();
 
-				// Show the ui bubble
-				textOptions.className = "text-options active";
-			}
-		}
-
-		lastType = selection.isCollapsed;
-	}
-	
-	function updateBubblePosition() {
-		var selection = window.getSelection();
-		var range = selection.getRangeAt(0);
-		var boundary = range.getBoundingClientRect();
-		
-		textOptions.style.top = boundary.top - 5 + window.pageYOffset + "px";
-		textOptions.style.left = (boundary.left + boundary.right)/2 + "px";
-	}
-
-	function updateBubbleStates() {
 
-		// It would be possible to use classList here, but I feel that the
-		// browser support isn't quite there, and this functionality doesn't
-		// warrent a shim.
+        if (event.target.tagName.toLowerCase() != "html" &&
+            (event.target.className === "url-input" ||
+                event.target.classList.contains("url") ||
+                event.target.parentNode.classList.contains("ui-inputs"))) {
 
-		if ( hasNode( currentNodeList, 'B') ) {
-			boldButton.className = "bold active"
-		} else {
-			boldButton.className = "bold"
-		}
-
-		if ( hasNode( currentNodeList, 'I') ) {
-			italicButton.className = "italic active"
-		} else {
-			italicButton.className = "italic"
-		}
+            currentNodeList = findNodes(selection.focusNode);
+            updateBubbleStates();
+            return;
+        }
 
-		if ( hasNode( currentNodeList, 'BLOCKQUOTE') ) {
-			quoteButton.className = "quote active"
-		} else {
-			quoteButton.className = "quote"
-		}
+        // Check selections exist
+        if (selection.isCollapsed === true && lastType === false) {
 
-		if ( hasNode( currentNodeList, 'A') ) {
-			urlButton.className = "url useicons active"
-		} else {
-			urlButton.className = "url useicons"
-		}
-	}
+            onSelectorBlur();
+        }
 
-	function onSelectorBlur() {
+        // Text is selected
+        if (selection.isCollapsed === false && composing === false) {
 
-		textOptions.className = "text-options fade";
-		setTimeout( function() {
+            currentNodeList = findNodes(selection.focusNode);
 
-			if (textOptions.className == "text-options fade") {
+            // Find if highlighting is in the editable area
+            if (hasNode(currentNodeList, "ARTICLE")) {
+                updateBubbleStates();
+                updateBubblePosition();
 
-				textOptions.className = "text-options";
-				textOptions.style.top = '-999px';
-				textOptions.style.left = '-999px';
-			}
-		}, 260 )
-	}
+                // Show the ui bubble
+                textOptions.className = "text-options active";
+            }
+        }
 
-	function findNodes( element ) {
+        lastType = selection.isCollapsed;
+    }
 
-		var nodeNames = {};
+    function updateBubblePosition() {
+        var selection = window.getSelection();
+        var range = selection.getRangeAt(0);
+        var boundary = range.getBoundingClientRect();
 
-		// Internal node?
-		var selection = window.getSelection();
+        textOptions.style.top = boundary.top - 5 + window.pageYOffset + "px";
+        textOptions.style.left = (boundary.left + boundary.right) / 2 + "px";
+    }
 
-		// if( selection.containsNode( document.querySelector('b'), false ) ) {
-		// 	nodeNames[ 'B' ] = true;
-		// }
+    function updateBubbleStates() {
 
-		while ( element.parentNode ) {
+        // It would be possible to use classList here, but I feel that the
+        // browser support isn't quite there, and this functionality doesn't
+        // warrent a shim.
 
-			nodeNames[element.nodeName] = true;
-			element = element.parentNode;
+        if (hasNode(currentNodeList, 'B')) {
+            boldButton.className = "bold active"
+        } else {
+            boldButton.className = "bold"
+        }
 
-			if ( element.nodeName === 'A' ) {
-				nodeNames.url = element.href;
-			}
-		}
+        if (hasNode(currentNodeList, 'I')) {
+            italicButton.className = "italic active"
+        } else {
+            italicButton.className = "italic"
+        }
 
-		return nodeNames;
-	}
+        if (hasNode(currentNodeList, 'BLOCKQUOTE')) {
+            quoteButton.className = "quote active"
+        } else {
+            quoteButton.className = "quote"
+        }
 
-	function hasNode( nodeList, name ) {
+        if (hasNode(currentNodeList, 'A')) {
+            urlButton.className = "url useicons active"
+        } else {
+            urlButton.className = "url useicons"
+        }
+    }
 
-		return !!nodeList[ name ];
-	}
+    function onSelectorBlur() {
 
-	function saveState( event ) {
-		
-		localStorage[ 'header' ] = headerField.innerHTML;
-		localStorage[ 'content' ] = contentField.innerHTML;
-	}
+        textOptions.className = "text-options fade";
+        setTimeout(function() {
 
-	function loadState() {
+            if (textOptions.className == "text-options fade") {
 
-		if ( localStorage[ 'header' ] ) {
-			headerField.innerHTML = localStorage[ 'header' ];
-		}
+                textOptions.className = "text-options";
+                textOptions.style.top = '-999px';
+                textOptions.style.left = '-999px';
+            }
+        }, 260)
+    }
 
-		if ( localStorage[ 'content' ] ) {
-			contentField.innerHTML = localStorage[ 'content' ];
-		}
-	}
+    function findNodes(element) {
 
-	function onBoldClick() {
-		document.execCommand( 'bold', false );
-	}
+        var nodeNames = {};
 
-	function onItalicClick() {
-		document.execCommand( 'italic', false );
-	}
+        // Internal node?
+        var selection = window.getSelection();
 
-	function onQuoteClick() {
+        // if( selection.containsNode( document.querySelector('b'), false ) ) {
+        // 	nodeNames[ 'B' ] = true;
+        // }
 
-		var nodeNames = findNodes( window.getSelection().focusNode );
+        while (element.parentNode) {
 
-		if ( hasNode( nodeNames, 'BLOCKQUOTE' ) ) {
-			document.execCommand( 'formatBlock', false, 'p' );
-			document.execCommand( 'outdent' );
-		} else {
-			document.execCommand( 'formatBlock', false, 'blockquote' );
-		}
-	}
+            nodeNames[element.nodeName] = true;
+            element = element.parentNode;
 
-	function onUrlClick() {
+            if (element.nodeName === 'A') {
+                nodeNames.url = element.href;
+            }
+        }
 
-		if ( optionsBox.className == 'options' ) {
+        return nodeNames;
+    }
 
-			optionsBox.className = 'options url-mode';
+    function hasNode(nodeList, name) {
 
-			// Set timeout here to debounce the focus action
-			setTimeout( function() {
+        return !!nodeList[name];
+    }
 
-				var nodeNames = findNodes( window.getSelection().focusNode );
+    function saveState(event) {
 
-				if ( hasNode( nodeNames , "A" ) ) {
-					urlInput.value = nodeNames.url;
-				} else {
-					// Symbolize text turning into a link, which is temporary, and will never be seen.
-					document.execCommand( 'createLink', false, '/' );
-				}
+        localStorage['header'] = headerField.innerHTML;
+        localStorage['content'] = contentField.innerHTML;
+    }
 
-				// Since typing in the input box kills the highlighted text we need
-				// to save this selection, to add the url link if it is provided.
-				lastSelection = window.getSelection().getRangeAt(0);
-				lastType = false;
+    function loadState() {
 
-				urlInput.focus();
+        if (localStorage['header']) {
+            headerField.innerHTML = localStorage['header'];
+        }
 
-			}, 100);
+        if (localStorage['content']) {
+            contentField.innerHTML = localStorage['content'];
+        }
+    }
 
-		} else {
+    function onBoldClick() {
+        document.execCommand('bold', false);
+    }
 
-			optionsBox.className = 'options';
-		}
-	}
+    function onItalicClick() {
+        document.execCommand('italic', false);
+    }
 
-	function onUrlInputKeyDown( event ) {
+    function onQuoteClick() {
 
-		if ( event.keyCode === 13 ) {
-			event.preventDefault();
-			applyURL( urlInput.value );
-			urlInput.blur();
-		}
-	}
+        var nodeNames = findNodes(window.getSelection().focusNode);
 
-	function onUrlInputBlur( event ) {
+        if (hasNode(nodeNames, 'BLOCKQUOTE')) {
+            document.execCommand('formatBlock', false, 'p');
+            document.execCommand('outdent');
+        } else {
+            document.execCommand('formatBlock', false, 'blockquote');
+        }
+    }
 
-		optionsBox.className = 'options';
-		applyURL( urlInput.value );
-		urlInput.value = '';
+    function onUrlClick() {
 
-		currentNodeList = findNodes( window.getSelection().focusNode );
-		updateBubbleStates();
-	}
+        if (optionsBox.className == 'options') {
 
-	function applyURL( url ) {
+            optionsBox.className = 'options url-mode';
 
-		rehighlightLastSelection();
+            // Set timeout here to debounce the focus action
+            setTimeout(function() {
 
-		// Unlink any current links
-		document.execCommand( 'unlink', false );
+                var nodeNames = findNodes(window.getSelection().focusNode);
 
-		if (url !== "") {
-		
-			// Insert HTTP if it doesn't exist.
-			if ( !url.match("^(http|https)://") ) {
+                if (hasNode(nodeNames, "A")) {
+                    urlInput.value = nodeNames.url;
+                } else {
+                    // Symbolize text turning into a link, which is temporary, and will never be seen.
+                    document.execCommand('createLink', false, '/');
+                }
 
-				url = "http://" + url;	
-			} 
+                // Since typing in the input box kills the highlighted text we need
+                // to save this selection, to add the url link if it is provided.
+                lastSelection = window.getSelection().getRangeAt(0);
+                lastType = false;
 
-			document.execCommand( 'createLink', false, url );
-		}
-	}
+                urlInput.focus();
 
-	function rehighlightLastSelection() {
+            }, 100);
 
-		window.getSelection().addRange( lastSelection );
-	}
+        } else {
 
-	function getWordCount() {
-		
-		var text = ZenPen.util.getText( contentField );
+            optionsBox.className = 'options';
+        }
+    }
 
-		if ( text === "" ) {
-			return 0
-		} else {
-			return text.split(/\s+/).length;
-		}
-	}
+    function onUrlInputKeyDown(event) {
 
-	function onCompositionStart ( event ) {
-		composing = true;
-	}
+        if (event.keyCode === 13) {
+            event.preventDefault();
+            applyURL(urlInput.value);
+            urlInput.blur();
+        }
+    }
 
-	function onCompositionEnd (event) {
-		composing = false;
-	}
+    function onUrlInputBlur(event) {
 
-	return {
-		init: init,
-		saveState: saveState,
-		getWordCount: getWordCount
-	}
+        optionsBox.className = 'options';
+        applyURL(urlInput.value);
+        urlInput.value = '';
+
+        currentNodeList = findNodes(window.getSelection().focusNode);
+        updateBubbleStates();
+    }
+
+    function applyURL(url) {
+
+        rehighlightLastSelection();
+
+        // Unlink any current links
+        document.execCommand('unlink', false);
+
+        if (url !== "") {
+
+            // Insert HTTP if it doesn't exist.
+            if (!url.match("^(http|https)://")) {
+
+                url = "http://" + url;
+            }
+
+            document.execCommand('createLink', false, url);
+        }
+        event.target
+    }
+
+    function rehighlightLastSelection() {
+
+        window.getSelection().addRange(lastSelection);
+    }
+
+    function getWordCount() {
+
+        var text = ZenPen.util.getText(contentField);
+
+        if (text === "") {
+            return 0
+        } else {
+            return text.split(/\s+/).length;
+        }
+    }
+
+    function onCompositionStart(event) {
+        composing = true;
+    }
+
+    function onCompositionEnd(event) {
+        composing = false;
+    }
+
+    function startFlowMode(minutes) {
+        flowMode = true;
+        refreshFlow();
+        contentField.addEventListener("keydown", flowKeyDownListener);
+        contentField.addEventListener("mouseup", flowResetCaretAndScroll);
+        document.body.classList.add("flow-mode");
+    }
+
+    function stopFlowMode() {
+        flowEnd();
+        contentField.removeEventListener("keydown", flowKeyDownListener);
+        contentField.addEventListener("mouseup", flowResetCaretAndScroll);
+        flowMode = false;
+        document.body.classList.remove("flow-mode");
+    }
+
+    function refreshFlow() {
+        clearTimeout(flowTimeout);
+        contentField.classList.remove("flow-animation");
+        contentField.offsetWidth = contentField.offsetWidth;
+        contentField.classList.add("flow-animation");
+        flowTimeout = setTimeout(function() {
+            flowEnd();
+        }, 7000);
+    }
+
+    function flowEnd() {
+        contentField.innerHTML = "";
+        contentField.classList.remove("flow-animation");
+    }
+
+    function flowKeyDownListener(event) {
+        // Deselect text if selected
+        if (window.getSelection() + "" != "") {
+            window.getSelection().removeAllRanges()
+        }
+
+        // Make sure shortcuts work while keeping the scroll and the caret at the end
+        if (event.ctrlKey && (
+                event.keyCode === 66 ||
+                event.keyCode === 73 ||
+                event.keyCode === 85)) {
+            flowLastKeyWasShortcut = true;
+        } else if (!flowLastKeyWasShortcut) {
+            flowResetCaretAndScroll();
+        } else {
+            flowLastKeyWasShortcut = false;
+        }
+
+        // Block ctrl + Z and ctrl + Y
+        if (event.ctrlKey && (
+                event.keyCode === 89 ||
+                event.keyCode === 90)) {
+            event.preventDefault();
+            return;
+        }
+
+        // Refresh flow timeout if valid key pressed without ctrl
+        if (!event.ctrlKey && flowRefreshKeys.indexOf(event.keyCode) > -1) {
+            refreshFlow();
+        }
+
+        // Prevent certain keys from working
+        if (flowRefreshKeys.indexOf(event.keyCode) < 0 && flowAllowKeys.indexOf(event.keyCode) < 0) {
+            event.preventDefault();
+            return false;
+        }
+    }
+
+    function flowResetCaretAndScroll() {
+        document.body.scrollTop = document.body.scrollHeight;
+        var el = document.querySelector(".content");
+        var n = el.childNodes.length;
+        if (n === 0) {
+            return;
+        }
+        var element = el.childNodes[n - 1];
+        n = element.childNodes.length;
+        while (n > 0) {
+            element = element.childNodes[n - 1];
+            n = element.childNodes.length;
+        }
+        var offset = element.length;
+        var range = document.createRange();
+        var sel = window.getSelection();
+        range.setStart(element, offset);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    return {
+        init: init,
+        saveState: saveState,
+        getWordCount: getWordCount,
+        flow: {
+            start: startFlowMode,
+            stop: stopFlowMode,
+            refreshDEBUG: refreshFlow
+        }
+    }
 
 })();
