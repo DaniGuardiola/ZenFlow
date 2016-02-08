@@ -1,6 +1,6 @@
 // editor
-ZenPen = window.ZenPen || {};
-ZenPen.editor = (function() {
+ZenFlow = window.ZenFlow || {};
+ZenFlow.editor = (function() {
 
     // Editor elements
     var headerField, contentField, cleanSlate, lastType, currentNodeList, savedSelection;
@@ -10,22 +10,31 @@ ZenPen.editor = (function() {
 
     var composing;
 
-    var flowTimeout, flowLastKeyWasShortcut = flowMode = false,
+    var flowTimeout, flowTimerTimeout, flowLastKeyWasShortcut = flowMode = false,
         flowRefreshKeys = [
             // Numbers
             48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
             // Letters
-            58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90
+            58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+            // Numpad
+            96, 97, 98, 99, 100, 101, 102, 103, 104, 105,
+            // Other characters
+            110, 111, 106, 107, 109, 187, 188, 189, 190, 191, 192, 219, 220, 221, 222, 228
         ],
         flowAllowKeys = [
             13, // Enter
             32 // Space
-        ];
+        ],
+        flowTimerElement,
+        flowTimerMinutes = 0,
+        flowTimerSeconds = 0;
 
     function init() {
 
         composing = false;
         bindElements();
+
+        flowTimerElement = document.querySelector(".flow-timer");
 
         // Set cursor position
         var range = document.createRange();
@@ -37,7 +46,7 @@ ZenPen.editor = (function() {
         createEventBindings();
 
         // Load state if storage is supported
-        if (ZenPen.util.supportsHtmlStorage()) {
+        if (ZenFlow.util.supportsHtmlStorage()) {
             loadState();
         }
     }
@@ -45,7 +54,7 @@ ZenPen.editor = (function() {
     function createEventBindings() {
 
         // Key up bindings
-        if (ZenPen.util.supportsHtmlStorage()) {
+        if (ZenFlow.util.supportsHtmlStorage()) {
 
             document.onkeyup = function(event) {
                 checkTextHighlighting(event);
@@ -182,9 +191,9 @@ ZenPen.editor = (function() {
         }
 
         if (hasNode(currentNodeList, 'A')) {
-            urlButton.className = "url useicons active"
+            urlButton.className = "url active"
         } else {
-            urlButton.className = "url useicons"
+            urlButton.className = "url"
         }
     }
 
@@ -210,7 +219,7 @@ ZenPen.editor = (function() {
         var selection = window.getSelection();
 
         // if( selection.containsNode( document.querySelector('b'), false ) ) {
-        // 	nodeNames[ 'B' ] = true;
+        //  nodeNames[ 'B' ] = true;
         // }
 
         while (element.parentNode) {
@@ -347,7 +356,7 @@ ZenPen.editor = (function() {
 
     function getWordCount() {
 
-        var text = ZenPen.util.getText(contentField);
+        var text = ZenFlow.util.getText(contentField);
 
         if (text === "") {
             return 0
@@ -365,19 +374,22 @@ ZenPen.editor = (function() {
     }
 
     function startFlowMode(minutes) {
+        flowTimerMinutes = minutes;
         flowMode = true;
         refreshFlow();
         contentField.addEventListener("keydown", flowKeyDownListener);
         contentField.addEventListener("mouseup", flowResetCaretAndScroll);
         document.body.classList.add("flow-mode");
+        flowTimer();
     }
 
-    function stopFlowMode() {
-        flowEnd();
+    function stopFlowMode(soft) {
+        flowEnd(soft);
         contentField.removeEventListener("keydown", flowKeyDownListener);
-        contentField.addEventListener("mouseup", flowResetCaretAndScroll);
+        contentField.removeEventListener("mouseup", flowResetCaretAndScroll);
         flowMode = false;
         document.body.classList.remove("flow-mode");
+        clearTimeout(flowTimerTimeout);
     }
 
     function refreshFlow() {
@@ -390,8 +402,37 @@ ZenPen.editor = (function() {
         }, 7000);
     }
 
-    function flowEnd() {
-        contentField.innerHTML = "";
+    function flowTimer() {
+        flowTimerSeconds--;
+        if (flowTimerSeconds < 0) {
+            flowTimerMinutes--;
+            flowTimerSeconds = 59;
+        }
+        if (flowTimerMinutes < 0) {
+            flowTimerSeconds = flowTimerMinutes = 0;
+            stopFlowMode(true);
+            return;
+        }
+        flowUpdateTimer(flowTimerMinutes, flowTimerSeconds);
+        flowTimerTimeout = setTimeout(flowTimer, 1000);
+    }
+
+    function flowUpdateTimer(minutes, seconds) {
+        if (seconds < 10) {
+            seconds = "0" + seconds;
+        }
+        if (minutes < 10) {
+            minutes = "0" + minutes;
+        }
+        flowTimerElement.textContent = minutes + ":" + seconds;
+    }
+
+    function flowEnd(soft) {
+        if (!soft) {
+            contentField.innerHTML = "";
+            saveState();
+        }
+        clearTimeout(flowTimeout);
         contentField.classList.remove("flow-animation");
     }
 
@@ -461,8 +502,7 @@ ZenPen.editor = (function() {
         getWordCount: getWordCount,
         flow: {
             start: startFlowMode,
-            stop: stopFlowMode,
-            refreshDEBUG: refreshFlow
+            stop: stopFlowMode
         }
     }
 

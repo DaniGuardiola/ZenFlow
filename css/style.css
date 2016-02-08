@@ -1,9 +1,13 @@
 /*!
- * ZenPen
+ * ZenFlow
+ * MIT licensed
+ *
+ * Based on ZenPen
  * http://www.zenpen.io
  * MIT licensed
  *
- * Copyright (C) Tim Holman, http://tholman.com
+ * Copyright (C) Dani Guardiola, http://daniguardiola.me
+ * ZenPen copyright (C) Tim Holman, http://tholman.com
  */
 
 
@@ -26,7 +30,7 @@ html {
 
 html,
 body {
-    font-family: 'Lora', serif;
+    font-family: 'Roboto', verdana;
     padding: 0px;
     margin: 0px;
 }
@@ -92,12 +96,6 @@ blockquote {
     height: 100%;
 }
 
-.useicons {
-    -webkit-font-smoothing: antialiased;
-    font-size: 20px !important;
-    font-family: 'icomoon' !important;
-}
-
 .yin {
     background: #fdfdfd;
     color: #111;
@@ -117,31 +115,23 @@ blockquote {
     top: 0px;
 }
 
-.ui:hover button {
+.ui:hover paper-icon-button {
     opacity: 0.4;
 }
 
-.ui button:hover {
+.ui paper-icon-button:hover {
     opacity: 1;
 }
 
-.ui button,
+.ui paper-icon-button,
 .text-options button {
     -webkit-transition: opacity 400ms;
     -moz-transition: opacity 400ms;
     -ms-transition: opacity 400ms;
     -o-transition: opacity 400ms;
     transition: opacity 400ms;
-    font-family: inherit;
-    background: none;
-    cursor: pointer;
-    font-size: 25px;
     color: inherit;
     opacity: 0.1;
-    padding: 0px;
-    height: 32px;
-    width: 25px;
-    border: 0px;
 }
 
 a {
@@ -161,11 +151,6 @@ a:hover {
     z-index: 3;
     left: 0px;
     top: 0px;
-}
-
-.quote {
-    line-height: 60px !important;
-    font-size: 49px !important;
 }
 
 
@@ -264,16 +249,9 @@ a:hover {
     -ms-transition: opacity 250ms;
     -o-transition: opacity 250ms;
     transition: opacity 250ms;
-    font-size: 30px !important;
-    margin: 15px auto;
-    background: none;
-    cursor: pointer;
+    margin: 0 auto;
     display: block;
-    border: none;
-    padding: 0px;
-    width: 80px;
     color: #fff;
-    margin-top: -2px;
 }
 
 .savebutton:hover {
@@ -341,6 +319,33 @@ body.flow-mode .content {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+}
+
+body.flow-mode .ui .save,
+body.flow-mode .ui .flow {
+    display: none;
+}
+
+.flow-timer {
+    border: 1px solid black;
+    border-radius: 6px;
+    width: 128px;
+    height: 64px;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    text-align: center;
+    line-height: 64px;
+    font-size: 32px;
+    font-weight: bold;
+}
+
+body.yang .flow-timer {
+    border-color: white;
+}
+
+body:not(.flow-mode) .flow-timer {
+    display: none;
 }
 
 .flowtime {
@@ -428,9 +433,9 @@ body.flow-mode .content {
     margin-left: -63px;
     margin-top: -46px;
     z-index: 1000;
-    padding: 5px 4px 5px 5px;
-    width: 125px;
-    height: 40px;
+    padding: 2px;
+    width: 164px;
+    height: 44px;
     -webkit-transition: all 300ms ease-in-out;
     -moz-transition: all 300ms ease-in-out;
     -ms-transition: all 300ms ease-in-out;
@@ -452,30 +457,21 @@ body.flow-mode .content {
     opacity: 0;
 }
 
-.options .italic {
-    font-style: italic;
-}
-
-.options button {
+.options paper-icon-button {
     -webkit-transition: all 250ms ease-in-out;
     -moz-transition: all 250ms ease-in-out;
     -ms-transition: all 250ms ease-in-out;
     -o-transition: all 250ms ease-in-out;
     transition: all 250ms ease-in-out;
     float: left;
-    width: 28px;
     opacity: 0.7;
-    height: 30px;
-    border-radius: 3px;
-    margin-right: 1px;
-    font-family: 'Lora', serif;
 }
 
 .options.url-mode input {
     border-left: 2px solid transparent;
     padding-right: 5px;
     padding-left: 5px;
-    width: 236px;
+    width: 229px;
 }
 
 .options input {
@@ -487,7 +483,7 @@ body.flow-mode .content {
     border-radius: 3px;
     overflow: hidden;
     outline: 0px;
-    height: 30px;
+    height: 40px;
     padding: 0px;
     margin: 0px;
     border: 0px;
@@ -495,16 +491,11 @@ body.flow-mode .content {
     width: 0px;
 }
 
-.options button.active {
-    background-color: rgba(255, 255, 255, 0.4);
+.options paper-icon-button.active {
     opacity: 1;
 }
 
-.yang .options button.active {
-    background-color: rgba(0, 0, 0, 0.3);
-}
-
-.options button:hover {
+.options paper-icon-button:hover {
     opacity: 0.95;
 }
 
@@ -529,10 +520,6 @@ body.flow-mode .content {
 
 .yang .options:before {
     border-top: 5px solid rgba(255, 255, 255, 0.9);
-}
-
-.url {
-    -webkit-font-smoothing: antialiased;
 }
 
 .top {

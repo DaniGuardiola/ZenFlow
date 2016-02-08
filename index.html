@@ -3,21 +3,26 @@
 
 <head>
     <!-- MISC/META -->
-    <title> ZenPen ~ Minimal Distraction, Maximum Zen </title>
+    <title> ZenFlow ~ Minimal Distraction, Maximum Zen </title>
     <meta charset="utf-8">
-    <meta name="description" content="Zenpen - A minimal text editor, made to stay out of the way while you get the words down.">
+    <meta name="description" content="ZenFlow - A minimal text editor, made to stay out of the way while you get the words down.">
     <!-- CSS -->
-    <link href="//fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic" rel="stylesheet" type="text/css">
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,400italic,700,700italic' rel='stylesheet' type='text/css'>
     <link href="css/style.css" rel="stylesheet">
-    <link href="css/fonts.css" rel="stylesheet">
     <!-- LIBS -->
     <script src="js/libs/FileSaver.min.js"></script>
     <script src="js/libs/Blob.min.js"></script>
     <script src="js/libs/screenfull.min.js"></script>
+    <script src="bower_components/webcomponentsjs/webcomponents.min.js"></script>
     <!-- JS -->
     <script src="js/utils.js"></script>
     <script src="js/editor.js"></script>
     <script src="js/ui.js"></script>
+    <!-- WEB COMPONENTS -->
+    <link rel="import" href="bower_components/paper-icon-button/paper-icon-button.html">
+    <link rel="import" href="bower_components/iron-icons/iron-icons.html">
+    <link rel="import" href="bower_components/iron-icons/editor-icons.html">
+    <link rel="import" href="bower_components/iron-icons/device-icons.html">
 </head>
 
 <body class="yin">
@@ -36,12 +41,14 @@
             </div>
         </div>
         <div class="description modal">
-            <h1> About ZenPen </h1>
-            <p> Zenpen is a clean and simple writing zone, made by <a href="http://tholman.com">Tim Holman</a> (<a href="http://twitter.com/twholman">@twholman</a>), to get you into that zone, where you can focus on the writing.
+            <h1> About ZenFlow </h1>
+            <p> ZenFlow is a clean and simple writing zone, made by <a href="http://daniguardiola.me">Dani Guardiola</a> (<a href="http://twitter.com/DaniMGuardiola">@DaniMGuardiola</a>), to get you into that zone, where you can focus on the writing.
                 <br>
-                <br>ZenPen is open source on <a href="http://github.com/tholman/zenpen">Github</a>.
+                <br> This project is based on <a href="http://zenpen.io">ZenPen</a> by <a href="http://tholman.com">Tim Holman</a> (<a href="http://twitter.com/twholman">@twholman</a>)
                 <br>
-                <br>If you have any questions, hit me up via <a href="mailto:timothy.w.holman@gmail.com">email</a>.</p>
+                <br>ZenFlow is open source on <a href="http://github.com/DaniGuardiola/ZenFlow">Github</a>, also check the original <a href="http://github.com/tholman/zenpen">ZenPen</a> project.
+                <br>
+                <br>If you have any questions, hit me up via <a href="mailto:contacto@daniguardiola.me">email</a>.</p>
         </div>
         <div class="saveoverlay modal">
             <h1>Select save format</h1>
@@ -50,7 +57,7 @@
                 <span data-format='html'>HTML</span>
                 <span data-format='plain'>Plain Text</span>
             </p>
-            <button class='savebutton useicons'>&#xe006;</button>
+            <paper-icon-button class="savebutton" icon="save"></paper-icon-button>
             <div> Or select format and press ctrl+c (cmd+c on mac) to copy the text. </div>
             <textarea class='hiddentextbox'></textarea>
         </div>
@@ -58,73 +65,74 @@
     <div class="text-options">
         <div class="options">
             <span class="no-overflow">
-					<span class="lengthen ui-inputs">
-						<button class="url useicons">&#xe005;</button>
-						<input class="url-input" type="text" placeholder="Type or Paste URL here"/>
-						<button class="bold">b</button>
-						<button class="italic">i</button>
-						<button class="quote">&rdquo;</button>
-					</span>
+                    <span class="lengthen ui-inputs">
+                        <paper-icon-button class="url" icon="editor:insert-link"></paper-icon-button>
+                        <input class="url-input" type="text" placeholder="Type or Paste URL here"/>
+                        <paper-icon-button class="bold" icon="editor:format-bold"></paper-icon-button>
+                        <paper-icon-button class="italic" icon="editor:format-italic"></paper-icon-button>
+                        <paper-icon-button class="quote" icon="editor:format-quote"></paper-icon-button>
+                    </span>
             </span>
         </div>
     </div>
     <div class="ui">
         <div class="wrapper">
             <div class="top editing">
-                <button class="fullscreen useicons" title="Toggle fullscreen">
-                    &#xe000;
-                </button>
-                <button class="color-flip useicons" title="Invert colors">
-                    &#xe002;
-                </button>
-                <button class="target useicons" title="Set target word count">
-                    &#xe001;
-                </button>
-                <button class="flow useicons" title="Start flow">
-                    &#xe001;
-                </button>
-                <button class="save useicons" title="Save Text">
-                    &#xe003;
-                </button>
+                <paper-icon-button class="fullscreen" icon="fullscreen" title="Toggle fullscreen"></paper-icon-button>
+                <paper-icon-button class="color-flip" icon="invert-colors" title="Invert colors"></paper-icon-button>
+                <paper-icon-button class="target" icon="editor:text-fields" title="Set target word count"></paper-icon-button>
+                <paper-icon-button class="flow" icon="device:location-searching" title="Start flow"></paper-icon-button>
+                <paper-icon-button class="save" icon="save" title="Save text"></paper-icon-button>
             </div>
             <div class="bottom">
-                <button class="about">
-                    ?
-                </button>
+                <paper-icon-button class="about" icon="help" title="About ZenFlow"></paper-icon-button>
             </div>
         </div>
     </div>
+    <div class="flow-timer">15:00</div>
     <div class="word-counter">
         <span class="progress"></span>
     </div>
     <section>
         <header contenteditable="true" class="header">
-            This is ZenPen
+            This is ZenFlow
         </header>
         <article contenteditable="true" class="content">
             <p>
                 A minimalist writing zone, where you can block out all distractions and get to what's important. The writing!
             </p>
             <p>
+                Also, if you really want to be productive, try the <b>flow mode</b>: the whole text will be deleted if you don't write anything for 5 seconds!
+            </p>
+            <p>
+                When flow mode is enabled, you cannot save or change any of the text, you can only add text <b>at the end of the document</b> until the time you selected runs out.
+            </p>
+            <p>
+                <b>Write now, edit later!</b>
+            </p>
+            <p>
                 To get started, all you need to do is delete this text (seriously, just highlight it and hit delete), and fill the page with your own fantastic words. You can even change the title!
             </p>
             <p>
-                You can use <b>bold</b>, <i>italics</i>, <b><i>both</i></b> and <a href="http://zenpen.io"> urls </a> just by highlighting the text and selecting them from the tiny options box that appears above it.
+                You can use <b>bold</b>, <i>italics</i>, <b><i>both</i></b> and <a href="http://daniguardiola.me"> urls </a> just by highlighting the text and selecting them from the tiny options box that appears above it.
             </p>
             <blockquote>
                 Quotes are easy to add too!
             </blockquote>
             <p>
+                Use the options at the top left corner to enable fullscreen, switch to dark theme, set word count goal, start flow mode and save.
+            </p>
+            <p>
                 For <i>questions</i> and <b>open source info</b>, Click that little question mark at the bottom left of the screen.
             </p>
-            <p>Happy Typing! ~ <b>Tim Holman (@twholman)</b></p>
+            <p>Happy Typing! ~ <b>Dani Guardiola (@DaniMGuardiola)</b>, based on ZenPen by Tim Holman (@twholman)</p>
         </article>
     </section>
     <!-- JS -->
     <script type="text/javascript">
-    // Initiate ZenPen
-    ZenPen.editor.init();
-    ZenPen.ui.init();
+    // Initiate ZenFlow
+    ZenFlow.editor.init();
+    ZenFlow.ui.init();
     </script>
 </body>
 
